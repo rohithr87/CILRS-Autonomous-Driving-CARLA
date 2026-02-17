@@ -1,0 +1,28 @@
+# Large data files
+collected_data/
+training_data/
+*.pth
+*.pt
+
+# CARLA files
+*.egg
+CarlaUE4/
+PythonAPI/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.conda/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
