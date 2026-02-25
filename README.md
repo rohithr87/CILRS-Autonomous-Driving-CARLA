@@ -39,17 +39,17 @@ The project was evaluated in CARLA Town01 with 40 NPC vehicles and 5 pedestrians
 
 **Normal driving at 25 km/h — FOLLOW command, clear road, 0 collisions:**
 
-![CILRS driving — normal conditions](demo/output1.png)
+![CILRS driving — normal conditions](output/output1.png)
 
 **Stopped at red light — braking correctly, CAUTION alert on HUD:**
 
-![CILRS driving — red light stop](demo/output2.png)
+![CILRS driving — red light stop](output/output2.png)
 
 > Both screenshots show the real-time dashboard HUD (top-right), the third-person simulator view (left), and the terminal log of per-second driving metrics (bottom).
 
 ### Training Results — Loss Curves (Kaggle, NVIDIA T4)
 
-![CILRS Training Results — Best Epoch 20, Val Loss 0.0538](demo/result.png)
+![CILRS Training Results — Best Epoch 20, Val Loss 0.0538](output/result.png)
 
 All six plots show healthy convergence — validation loss consistently below training loss from epoch 3 onwards, with no signs of overfitting. The **Val Steer Error by Command** panel (bottom-right) confirms balanced performance across all four navigation branches (Follow, Left, Right, Straight), with errors converging below 0.005 by epoch 15.
 
