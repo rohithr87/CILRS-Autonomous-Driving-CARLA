@@ -1,112 +1,278 @@
-# 🚗 CILRS Autonomous Driving in CARLA Simulator
+# CILRS Autonomous Driving in CARLA Simulator
 
-An end-to-end autonomous driving system using **Conditional Imitation Learning with a ResNet-34 backbone (CILRS)** in the CARLA 0.9.10 simulator. Built as a B.Tech CSE Major Project.
-
----
-
-## 🎯 Results
-
-| Metric | Value |
-|---|---|
-| Safety Score | 99.8 / 100 |
-| Overall Grade | A+ (Excellent) |
-| Total Collisions | 0 |
-| Red Light Violations | 0 |
-| Steering Correlation | 0.9861 |
-| Max Speed | 35.4 km/h |
-| Off-road | 0.4% |
-
-> Tested with 40 NPC vehicles + 5 pedestrians for 450 seconds in Town01.
+> **B.Tech Computer Science & Engineering — Major Project**
+> End-to-end autonomous driving using Conditional Imitation Learning with a ResNet-34 backbone (CILRS) in the CARLA 0.9.10 simulator.
 
 ---
 
-## 🏗️ Architecture
+## Table of Contents
+
+- [Project Overview](#project-overview)
+- [Demo](#demo)
+- [Results & Performance](#results--performance)
+- [System Architecture](#system-architecture)
+- [Features](#features)
+- [Dataset & Training](#dataset--training)
+- [Project Structure](#project-structure)
+- [Installation & Setup](#installation--setup)
+- [Usage](#usage)
+- [Custom Map — CUSAT Campus](#custom-map--cusat-campus)
+- [Tech Stack](#tech-stack)
+- [References](#references)
+- [Author](#author)
+
+---
+
+## Project Overview
+
+This project implements an **end-to-end autonomous driving agent** using Conditional Imitation Learning with ResNet (CILRS). The agent learns to drive in a simulated urban environment solely from human demonstrations — no hand-crafted rules, no reward engineering.
+
+Given a camera image, current speed, and a high-level navigation command (Follow Lane / Turn Left / Turn Right / Go Straight), the neural network directly predicts steering, throttle, and brake to control the vehicle in real time.
+
+The project was evaluated in CARLA Town01 with 40 NPC vehicles and 5 pedestrians, achieving a **Safety Score of 99.8/100** with zero collisions over a 450-second run.
+
+---
+
+## Demo
+
+### Simulation in Action — CARLA Town01
+
+**Normal driving at 25 km/h — FOLLOW command, clear road, 0 collisions:**
+
+![CILRS driving — normal conditions](demo/output1.png)
+
+**Stopped at red light — braking correctly, CAUTION alert on HUD:**
+
+![CILRS driving — red light stop](demo/output2.png)
+
+> Both screenshots show the real-time dashboard HUD (top-right), the third-person simulator view (left), and the terminal log of per-second driving metrics (bottom).
+
+### Training Results — Loss Curves (Kaggle, NVIDIA T4)
+
+![CILRS Training Results — Best Epoch 20, Val Loss 0.0538](demo/result.png)
+
+All six plots show healthy convergence — validation loss consistently below training loss from epoch 3 onwards, with no signs of overfitting. The **Val Steer Error by Command** panel (bottom-right) confirms balanced performance across all four navigation branches (Follow, Left, Right, Straight), with errors converging below 0.005 by epoch 15.
+
+---
+
+## Results & Performance
+
+### Simulation Evaluation (Town01)
+
+| Metric                | Value         |
+|-----------------------|---------------|
+| Safety Score          | **99.8 / 100**|
+| Overall Grade         | **A+ (Excellent)** |
+| Total Collisions      | 0             |
+| Red Light Violations  | 0             |
+| Steering Correlation  | 0.9861        |
+| Max Speed Achieved    | 35.4 km/h     |
+| Off-road Percentage   | 0.4%          |
+| Test Duration         | 450 seconds   |
+| NPC Vehicles          | 40            |
+| Pedestrians           | 5             |
+
+### Training Metrics
+
+| Metric                | Value    |
+|-----------------------|----------|
+| Validation Loss       | 0.0538   |
+| Steering Correlation  | 0.9861   |
+| Throttle Correlation  | 0.9589   |
+| Brake Correlation     | 0.9815   |
+| Speed Correlation     | 0.9844   |
+
+> Training curves showed rapid convergence within the first 5 epochs, with smooth loss reduction across all control outputs through epoch 20. The "Val Steer Error by Command" plot confirmed balanced performance across all four navigation branches.
+
+---
+
+## System Architecture
 
 ```
-Camera Image (200×88) → ResNet-34 → Visual Features
-                                          ↓
-Speed (normalized) → Speed Encoder → Combined Features
-                                          ↓
-Navigation Command → Branch Selector → [Follow | Left | Right | Straight]
-                                          ↓
-                                  Predicted Controls
-                              [Steering, Throttle, Brake]
-                                          ↓
-                          Speed Prediction (auxiliary task)
+┌──────────────────────────────────────────────────────────┐
+│                      CILRS Model                         │
+│                                                          │
+│  Camera Image (200×88) ──► ResNet-34 ──► Visual Features │
+│                                               │          │
+│  Speed (normalized) ──► Speed Encoder ──►  Concat        │
+│                                               │          │
+│  Navigation Command ──────────────────► Branch Selector  │
+│                                               │          │
+│                              ┌────────────────┴────────┐ │
+│                              │   4 Conditional Branches│ │
+│                              │  Follow / Left /        │ │
+│                              │  Right / Straight       │ │
+│                              └────────────────┬────────┘ │
+│                                               │          │
+│                              Predicted Controls          │
+│                         [Steering, Throttle, Brake]      │
+│                                               │          │
+│                         Speed Prediction (Auxiliary)     │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ### Model Details
-- **Backbone:** ResNet-34 (pretrained on ImageNet)
-- **Parameters:** 22.4 Million
-- **Branches:** 4 conditional branches (Follow, Left, Right, Straight)
-- **Training Data:** 176,256 frames across 5 driving sessions
-- **Training:** 20 epochs on NVIDIA T4 GPU
-- **Validation Loss:** 0.0538
-- **Optimizer:** Adam (lr=0.0002, weight_decay=1e-4)
+
+| Component         | Details                                    |
+|-------------------|--------------------------------------------|
+| Backbone          | ResNet-34 (pretrained on ImageNet)         |
+| Total Parameters  | 22.4 Million                               |
+| Input Image Size  | 200 × 88 (RGB)                             |
+| Navigation Branches | 4 — Follow, Left, Right, Straight        |
+| Loss Functions    | MSE (controls) + MSE (speed auxiliary)     |
+| Optimizer         | Adam (lr = 0.0002, weight_decay = 1e-4)    |
+| Epochs            | 20                                         |
+| Training Hardware | NVIDIA T4 GPU (Kaggle)                     |
 
 ---
 
-## 🔧 Features
+## Features
 
 ### Driving Intelligence
-- 🧠 Neural network predicts steering, throttle, and brake from camera images
-- 🚦 Traffic light detection and obedience (Red/Yellow/Green)
-- 🚗 Real-time obstacle detection with speed-adaptive braking distances
-- 🔄 Lane-change overtaking state machine (Left/Right/Reverse/Teleport)
-- 📍 Route planning using CARLA GlobalRoutePlanner
+- Neural network predicts steering, throttle, and brake directly from camera images
+- Conditional branches for four navigation commands — Follow, Left, Right, Straight
+- Traffic light detection and obedience (Red / Yellow / Green states)
+- Real-time obstacle detection with speed-adaptive braking distances
+- Route planning using CARLA `GlobalRoutePlanner`
 
 ### Control System
-- ⚡ PID-like speed controller (target: 35 km/h, max: 45 km/h)
-- 🔀 Curve detection with automatic speed reduction (15-22 km/h)
-- 🛑 Progressive braking (scales with vehicle speed)
-- 🏎️ Hard speed cap with progressive braking (45/50/55 km/h)
+- PID-style speed controller (target: 35 km/h, hard cap: 45 km/h)
+- Curve detection with automatic speed reduction (15–22 km/h in bends)
+- Progressive braking that scales with current vehicle speed
+- Lane-change overtaking state machine (Left / Right / Reverse / Teleport fallback)
 
 ### Safety & Recovery
-- 🛡️ Off-road detection with automatic road recovery
-- 🔙 Stuck detection with reverse + teleport fallback
-- ⏱️ Red light grace period (prevents false overtake after traffic stops)
-- 📊 Collision cooldown (prevents inflated collision counts)
+- Off-road detection with automatic road recovery behaviour
+- Stuck detection with reverse manoeuvre and teleport fallback
+- Red light grace period to prevent false overtake triggers after traffic stops
+- Collision cooldown mechanism to prevent inflated collision counts
 
-### Visualization
-- 📺 Real-time dashboard HUD with speed, steering, status
-- 📈 Comprehensive evaluation metrics and scoring
+### Visualization & Evaluation
+- Real-time dashboard HUD showing speed, steering angle, current status, and distance to destination
+- Comprehensive evaluation metrics and safety scoring
+- Terminal log output with per-second status (speed, command, obstacle state, traffic light)
 
 ### Custom Map Support
-- 🗺️ OpenStreetMap to OpenDRIVE converter
-- 🏫 CUSAT campus map integration
-- 📌 Landmark-to-spawn-point mapping
+- OpenStreetMap → OpenDRIVE converter for importing real-world road networks
+- CUSAT campus map integration with landmark-to-spawn-point mapping
 
 ---
 
-## 🚀 Quick Start
+## Dataset & Training
+
+### Data Collection
+
+- **Simulator:** CARLA 0.9.10, Town01
+- **Sessions:** 5 manual driving sessions with varying traffic and weather
+- **Total Frames:** 176,256
+- **Sensors:** RGB Camera at 800×600, 100° FOV
+- **Labels:** Speed, steering, throttle, brake, navigation command per frame
+- **Preprocessing:** Images resized from 800×600 → 200×88 for training
+
+### Training Configuration
+
+| Parameter        | Value        |
+|------------------|--------------|
+| Epochs           | 20           |
+| Batch Size       | 128          |
+| Learning Rate    | 0.0002       |
+| Optimizer        | Adam         |
+| Weight Decay     | 1e-4         |
+| Loss (Controls)  | MSE          |
+| Loss (Speed)     | MSE          |
+| GPU              | NVIDIA T4    |
+| Platform         | Kaggle       |
+
+### Training Pipeline
+
+1. **Collect** — Drive manually in CARLA using `collect_data.py`; saves images + `measurements.csv` per session
+2. **Prepare** — Run `prepare_dataset.py` to resize images and organise sessions for upload
+3. **Train** — Train CILRS model on Kaggle using the Jupyter notebook (`notebook.ipynb`)
+4. **Deploy** — Load the saved model checkpoint in `autonomous_drive.py` for inference
+
+---
+
+## Project Structure
+
+```
+CILRS-Autonomous-Driving-CARLA/
+│
+├── README.md
+├── requirements.txt
+├── .gitignore
+│
+├── model/
+│   ├── autonomous_drive.py     # Main autonomous driving agent (V6.0)
+│   ├── collect_data.py         # Manual data collection script
+│   ├── prepare_dataset.py      # Image resizing and dataset preparation
+│   ├── osm_to_xodr.py          # OpenStreetMap → OpenDRIVE converter
+│   ├── load_cusat.py           # CUSAT campus map loader for CARLA
+│   └── map_landmarks.py        # GPS landmark → spawn point mapper
+│
+├── training/
+│   └── notebook.ipynb          # Kaggle training notebook
+│
+├── demo/
+│   ├── result.png              # Training loss curves (all 6 plots)
+│   ├── output1.png             # Simulation screenshot — normal driving
+│   └── output2.png             # Simulation screenshot — red light stop
+│
+└── docs/
+    └── (architecture diagrams)
+```
+
+---
+
+## Installation & Setup
 
 ### Prerequisites
+
 - CARLA 0.9.10 Simulator
 - Python 3.7
 - NVIDIA GPU with CUDA support
+- Conda (recommended)
 
-### Installation
+### Step 1 — Clone the Repository
 
 ```bash
-# Clone repository
 git clone https://github.com/YOUR_USERNAME/CILRS-Autonomous-Driving-CARLA.git
 cd CILRS-Autonomous-Driving-CARLA
+```
 
-# Create conda environment
+### Step 2 — Create Conda Environment
+
+```bash
 conda create -n carla_project python=3.7 -y
 conda activate carla_project
+```
 
-# Install dependencies
+### Step 3 — Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### Running
+### Step 4 — Verify CARLA Installation
 
 ```bash
-# Terminal 1: Start CARLA simulator
-cd ~/carla_simulator && ./CarlaUE4.sh -opengl -quality-level=Low &
+cd ~/carla_simulator
+./CarlaUE4.sh -opengl -quality-level=Low
+```
 
-# Terminal 2: Run autonomous driving
+---
+
+## Usage
+
+### Running Autonomous Driving
+
+**Terminal 1 — Start the CARLA simulator:**
+```bash
+cd ~/carla_simulator
+./CarlaUE4.sh -opengl -quality-level=Low &
+```
+
+**Terminal 2 — Launch the autonomous agent:**
+```bash
 cd model/
 python autonomous_drive.py --spawn 0 --destination 50 \
     --vehicles 40 --pedestrians 5 --duration 300
@@ -114,110 +280,127 @@ python autonomous_drive.py --spawn 0 --destination 50 \
 
 ### Command Line Arguments
 
-| Argument | Default | Description |
-|---|---|---|
-| `--spawn` | 0 | Spawn point index |
-| `--destination` | None | Destination spawn point |
-| `--vehicles` | 15 | Number of NPC vehicles |
-| `--pedestrians` | 10 | Number of pedestrians |
-| `--duration` | 180 | Driving duration (seconds) |
-| `--map` | None | Use `'cusat'` for custom map |
-| `--no-hud` | False | Disable dashboard HUD |
+| Argument         | Default | Description                             |
+|------------------|---------|-----------------------------------------|
+| `--spawn`        | 0       | Spawn point index for the ego vehicle   |
+| `--destination`  | None    | Target spawn point index                |
+| `--vehicles`     | 15      | Number of NPC vehicles in the scene     |
+| `--pedestrians`  | 10      | Number of NPC pedestrians               |
+| `--duration`     | 180     | Driving duration in seconds             |
+| `--map`          | None    | Use `'cusat'` for the custom campus map |
+| `--no-hud`       | False   | Disable the real-time dashboard HUD     |
 
-### Custom Map (CUSAT Campus)
+### Data Collection
 
 ```bash
-# Load CUSAT map first
-python load_cusat.py  # Ctrl+C after "Map loaded"
+python collect_data.py --duration 300 --vehicles 15
+```
 
-# Then drive
+### Dataset Preparation
+
+```bash
+python prepare_dataset.py
+# Resizes images from 800×600 to 200×88
+# Output: ~/carla_simulator/training_data/
+```
+
+---
+
+## Custom Map — CUSAT Campus
+
+> ⚠️ **Status: Experimental** — The CUSAT custom map pipeline (OSM → OpenDRIVE → CARLA) is implemented and functional for map loading and spawn point generation. However, autonomous driving on the CUSAT map has **not been fully validated** — the trained CILRS model currently produces reliable results only on **CARLA Town01**, which matches the training distribution.
+>
+> The CUSAT map tools are included as a proof-of-concept for real-world map integration and future work.
+
+This project includes a toolchain for driving on a custom map of the **CUSAT (Cochin University of Science and Technology) campus**, converted from real OpenStreetMap data into CARLA's OpenDRIVE format.
+
+### Workflow
+
+```
+OpenStreetMap (.osm)  ──►  osm_to_xodr.py  ──►  cusat_campus.xodr
+                                                         │
+                                                  load_cusat.py
+                                                         │
+                                               CARLA World (CUSAT)
+                                                         │
+                                               map_landmarks.py
+                                                         │
+                                          Spawn points ↔ Landmarks
+```
+
+### Loading the CUSAT Map
+
+```bash
+# Step 1: Convert OSM to OpenDRIVE (run once)
+python osm_to_xodr.py ~/Downloads/map.osm
+
+# Step 2: Load map into CARLA (keep running, press Ctrl+C after "Map loaded")
+python load_cusat.py
+
+# Step 3: Map landmarks to spawn points
+python map_landmarks.py
+
+# Step 4: Attempt driving (experimental — results may vary)
 python autonomous_drive.py --map cusat --spawn 0 \
     --vehicles 5 --pedestrians 0 --duration 180
 ```
 
----
+### Campus Landmarks Mapped
 
-## 📊 Training Details
+| Landmark                    | Notes                        |
+|-----------------------------|------------------------------|
+| CUSAT Main Gate             | Primary entry point          |
+| School of Engineering       | Main academic block          |
+| Dept of Computer Science    | Project home department      |
+| Admin Building              | Central administration       |
+| Central Library             | Library complex              |
+| Seminar Complex             | Conference facilities        |
+| University Hostel           | Student accommodation        |
+| Sports Arena                | Recreation area              |
+| Marine Sciences / Ship Tech | Specialized departments      |
+| Boat Jetty / Lakeside       | Waterfront access            |
 
-### Data Collection
-- Manual driving in CARLA Town01
-- 5 sessions with varying traffic and weather
-- Captured: RGB camera (800×600), speed, controls, navigation commands
-- Resized to 200×88 for training
+### Fully Tested Command (Town01)
 
-### Training Configuration
+For reliable autonomous driving results, use Town01 with the command below — this is the configuration used in the final evaluation:
 
-| Parameter | Value |
-|---|---|
-| Epochs | 20 |
-| Batch Size | 128 |
-| Learning Rate | 0.0002 |
-| Optimizer | Adam |
-| Weight Decay | 1e-4 |
-| Loss | MSE (controls) + MSE (speed) |
-| GPU | NVIDIA T4 (Kaggle) |
-
-### Training Results
-
-| Metric | Value |
-|---|---|
-| Validation Loss | 0.0538 |
-| Steering Correlation | 0.9861 |
-| Throttle Correlation | 0.9589 |
-| Brake Correlation | 0.9815 |
-| Speed Correlation | 0.9844 |
-
----
-
-## 📁 Project Structure
-
-```
-CILRS-Autonomous-Driving-CARLA/
-├── README.md
-├── requirements.txt
-├── .gitignore
-├── model/
-│   ├── autonomous_drive.py     # Main driving system (V6.0)
-│   ├── collect_data.py         # Data collection script
-│   ├── prepare_dataset.py      # Data preprocessing/resizing
-│   ├── osm_to_xodr.py         # OSM to OpenDRIVE converter
-│   ├── load_cusat.py           # Custom map loader
-│   └── map_landmarks.py        # Landmark mapping
-├── docs/
-│   └── (architecture diagrams)
-└── demo/
-    └── (demo videos)
+```bash
+python autonomous_drive.py --spawn 0 --destination 50 \
+    --vehicles 40 --pedestrians 5 --duration 300
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-| Technology | Purpose |
-|---|---|
-| Python 3.7 | Programming language |
-| PyTorch 1.13 | Deep learning framework |
-| CARLA 0.9.10 | Driving simulator |
-| OpenCV 4.6 | Image processing |
-| ResNet-34 | Feature extraction backbone |
-| NumPy | Numerical computing |
-
----
-
-## 📝 References
-
-- CILRS Paper: [Exploring the Limitations of Behavior Cloning for Autonomous Driving](https://arxiv.org/abs/1904.08980)
-- [CARLA Simulator](https://carla.org/)
-- Conditional Imitation Learning (Codevilla et al., 2018)
+| Technology      | Version   | Purpose                          |
+|-----------------|-----------|----------------------------------|
+| Python          | 3.7       | Primary programming language     |
+| PyTorch         | 1.13      | Deep learning framework          |
+| CARLA           | 0.9.10    | Autonomous driving simulator     |
+| OpenCV          | 4.6       | Image capture and processing     |
+| ResNet-34       | —         | Visual feature extraction        |
+| NumPy           | —         | Numerical computation            |
+| OpenStreetMap   | —         | Real-world map data source       |
 
 ---
 
-## 👤 Author
+## References
 
-**Rohith** — B.Tech Computer Science and Engineering
+1. Codevilla, F. et al. — *[Exploring the Limitations of Behavior Cloning for Autonomous Driving](https://arxiv.org/abs/1904.08980)* (CILRS paper), ICCV 2019
+2. Codevilla, F. et al. — *End-to-end Driving via Conditional Imitation Learning*, ICRA 2018
+3. [CARLA Simulator Documentation](https://carla.readthedocs.io/en/0.9.10/)
+4. He, K. et al. — *Deep Residual Learning for Image Recognition* (ResNet), CVPR 2016
 
 ---
 
-## 📄 License
+## Author
 
-This project is for educational purposes as part of a B.Tech CSE Major Project.
+**Rohith**
+B.Tech — Computer Science and Engineering
+
+---
+
+## License
+
+This project was developed as a B.Tech CSE Major Project for academic and educational purposes.
