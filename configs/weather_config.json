@@ -1,0 +1,101 @@
+{
+  "weather_profiles": {
+    "clear": {
+      "carla_preset": "ClearNoon",
+      "max_speed_kmh": 35.0,
+      "curve_speed_kmh": 22.0,
+      "sharp_curve_speed_kmh": 15.0,
+      "brake_factor": 1.0,
+      "steer_damping": 1.0,
+      "curve_lookahead": 10.0,
+      "curve_threshold": 0.25,
+      "sharp_threshold": 0.5,
+      "traction_control": false,
+      "traction_speed_threshold_kmh": null,
+      "description": "Dry road, full visibility, normal driving parameters"
+    },
+    "rain": {
+      "carla_preset": "WetNoon",
+      "max_speed_kmh": 28.0,
+      "curve_speed_kmh": 18.0,
+      "sharp_curve_speed_kmh": 12.0,
+      "brake_factor": 1.5,
+      "steer_damping": 1.05,
+      "curve_lookahead": 12.0,
+      "curve_threshold": 0.2,
+      "sharp_threshold": 0.4,
+      "traction_control": true,
+      "traction_speed_threshold_kmh": 15.0,
+      "description": "Wet road, reduced grip — 1.5x braking, light steer damping, traction control"
+    },
+    "fog": {
+      "carla_preset": "SoftRainNoon",
+      "max_speed_kmh": 30.0,
+      "curve_speed_kmh": 20.0,
+      "sharp_curve_speed_kmh": 13.0,
+      "brake_factor": 1.3,
+      "steer_damping": 1.0,
+      "curve_lookahead": 8.0,
+      "curve_threshold": 0.22,
+      "sharp_threshold": 0.45,
+      "traction_control": false,
+      "traction_speed_threshold_kmh": null,
+      "description": "Reduced visibility — shorter lookahead, 1.3x braking, normal steer"
+    },
+    "night": {
+      "carla_preset": "ClearNight",
+      "max_speed_kmh": 30.0,
+      "curve_speed_kmh": 20.0,
+      "sharp_curve_speed_kmh": 13.0,
+      "brake_factor": 1.3,
+      "steer_damping": 1.0,
+      "curve_lookahead": 8.0,
+      "curve_threshold": 0.22,
+      "sharp_threshold": 0.45,
+      "traction_control": false,
+      "traction_speed_threshold_kmh": null,
+      "description": "Low light — reduced speed and lookahead, same parameters as fog"
+    },
+    "hardrain": {
+      "carla_preset": "HardRainNoon",
+      "max_speed_kmh": 20.0,
+      "curve_speed_kmh": 14.0,
+      "sharp_curve_speed_kmh": 10.0,
+      "brake_factor": 2.0,
+      "steer_damping": 1.15,
+      "curve_lookahead": 14.0,
+      "curve_threshold": 0.18,
+      "sharp_threshold": 0.35,
+      "traction_control": true,
+      "traction_speed_threshold_kmh": 15.0,
+      "description": "Severe rain — maximum caution, 2x braking, strong steer damping, traction control"
+    }
+  },
+
+  "obstacle_detection": {
+    "lateral_threshold_m": 2.5,
+    "forward_dot_threshold": 0.5,
+    "max_detection_range_m": 20.0,
+    "actor_cache_refresh_frames": 5
+  },
+
+  "traffic_light": {
+    "max_obey_distance_m": 15.0,
+    "heading_dot_threshold": 0.3
+  },
+
+  "scoring": {
+    "collision_penalty": 15,
+    "red_light_violation_penalty": 10,
+    "off_road_penalty_factor": 40,
+    "safety_weight": 0.6,
+    "comfort_weight": 0.3,
+    "route_completion_weight": 0.1,
+    "grades": {
+      "A+": 90,
+      "A":  80,
+      "B+": 70,
+      "B":  60
+    }
+  }
+}
